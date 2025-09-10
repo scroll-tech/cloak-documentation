@@ -1,4 +1,9 @@
-# Address book
+# Cloak Devnet Address Book
+
+!!! warning
+
+    Cloak is still under active development.
+    Expect the devnets to be reset and redeployed regularly.
 
 Below you can find the public devnet addresses for a Cloak instance on the Scroll Sepolia testnet, and on Scroll mainnet.
 These devnets can be used for experimenting with Cloak and for testing integrations.
