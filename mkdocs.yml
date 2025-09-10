@@ -1,0 +1,59 @@
+site_name: Cloak Documentation
+
+theme:
+  name: material
+  custom_dir: overrides
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.sections
+    - search.highlight
+  palette:
+    primary: white
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - attr_list
+  - md_in_html
+  - admonition
+  - def_list
+
+extra_css:
+  - stylesheets/code-wrap.css
+
+nav:
+  - Home: index.md
+  - Glossary: glossary.md
+  - Integration Guide:
+    - Overview: integration/overview.md
+    - Use cases: integration/use-cases.md
+    - Authentication: integration/auth.md
+    - Depositing funds: integration/deposits.md
+    - Making transfers: integration/transfers.md
+    - Withdrawing funds: integration/withdrawals.md
+    - Address book: integration/address-book.md
+    - FAQ: integration/faq.md
+  - Technology:
+    - Introduction: technology/introduction.md
+    - Deep-dive: technology/deep-dive.md
+    - Source code: technology/source-code.md
+    - Running locally: technology/running-locally.md
+    - Status & roadmap: technology/roadmap.md
