@@ -20,7 +20,25 @@ The users flow would be as follows:
 
 1. **Fund confidential account**.
    The wallet guides the user to bridge funds to Scroll, and then to deposit to a unique address on Cloak.
-   Most of the complexities of bridging and depositing can be hidden from the user.
+   Most of the complexities of bridging and depositing can be hidden from the user. The following swimlane graph shows the flow transferring from a public wallet to a private one.
+
+```mermaid
+sequenceDiagram
+    participant Sender as Sender (0x123)
+    participant Base as Base
+    participant Scroll as Scroll
+    participant Cloak as Cloak
+    participant Recipient as Recipient (0x456)
+
+    Sender->>Base: Bridge 0x123 -> Scroll 0x123<br/>msg: "deposit to Cloak 0x456"
+    Base-->>Scroll: Lock token & relay deposit event "to 0x123"
+    Scroll->>Sender: Credit on Scroll 0x123
+    Sender->>Scroll: Deposit to Cloak (target 0x456)
+    Note over Scroll: Encrypt & randomize recipient<br/>0x456 -> 0x789
+    Scroll-->>Cloak: Lock token & relay deposit event "to 0x789"
+    Note over Cloak: Decrypt 0x789 -> 0x456
+    Cloak->>Recipient: Credit on Cloak to 0x456
+```
 
 2. **Keep balance in confidential account**.
    By default, the user's tokens are in their confidential account, and cannot be queried by others.
