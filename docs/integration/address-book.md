@@ -9,6 +9,8 @@ Below you can find the public devnet addresses for a Cloak instance on the Scrol
 These devnets can be used for experimenting with Cloak and for testing integrations.
 For production deployment, you should contract the Scroll team to set up a dedicated instance of Cloak.
 
+**See the up-to-date address books in the `@scroll-tech/cloak-js` package [`chains`](https://github.com/scroll-tech/cloak-js/blob/main/src/chains.ts) file.**
+
 === "Cloak devnet on Scroll Sepolia"
 
     !!! info ""

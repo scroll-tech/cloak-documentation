@@ -37,33 +37,41 @@ This is necessary, so that the L3 confidential identity is not exposed publicly 
 We also want to avoid easily linking L2 and L3 accounts.
 
 
-## Executing Deposits
+## Prerequisites
+
+We recommend using the [`@scroll-tech/cloak-js`](https://github.com/scroll-tech/cloak-js/tree/main) package.
+This package currently supports `viem`, with plans to supports `ethers-js`.
+
+To use this package in your JavaScript or TypeScript project, simply install and then import it:
+
+```js
+import { abis, cloak } from '@scroll-tech/cloak-js';
+
+const c = cloak('local-devnet');
+console.log(c.contracts());
+```
+
+
+## Depositing ETH to Cloak
+
+!!! info "See the full example at [deposit-eth.ts](https://github.com/scroll-tech/cloak-js/tree/main/examples/viem/deposit-eth.ts) example in the `@scroll-tech/cloak-js` package."
 
 The deposit process is as follows.
 
 1. Fetch current encryption key.
 
     ```js linenums="1"
-    const encryptionKey = await l2Client.readContract({
-        abi,
-        address: contracts.l2.Validium,
-        functionName: 'encryptionKey',
+    const [keyId, encryptionKey] = await l2Client.readContract({
+      address: c.contracts().HostValidium,
+      abi: abis.HostValidium,
+      functionName: 'getLatestEncryptionKey',
     });
     ```
 
 2. Encrypt target address using the encryption key.
 
     ```js linenums="1"
-    const ecies = require('eciesjs');
-
-    function encryptAddress(address) {
-      const plaintext = Buffer.from(address.replace(/^0x/, ''), 'hex');
-      const ciphertext = ecies.encrypt(config.EncryptionKey, plaintext);
-      return '0x' + ciphertext.toString('hex');
-    }
-
-    const l3Account = privateKeyToAccount(generatePrivateKey());// (1)!
-    const addressCiphertext = encryptAddress(l3Account.address);
+    const recipient = c.encryptAddress(l3Address/* (1)! */, encryptionKey);
     ```
 
     1. It is recommended to generate a unique L3 address for the user.
@@ -72,23 +80,23 @@ The deposit process is as follows.
 3. Send deposit to L2 bridge.
 
     ```js linenums="1"
-    await l2Wallet.sendTransaction({
-      to: contracts.l2.WethGateway,
-      data: encodeFunctionData({
-          abi,
-          functionName: 'deposit',
-          args: [addressCiphertext, amount],
-      }),
-      value: amount + parseEther('0.001'),// (1)!
+    await l2Wallet.writeContract({
+      chain: null,
+      address: c.contracts().HostWethGateway,
+      value: amount,
+      abi: abis.HostWethGateway,
+      functionName: 'deposit',
+      args: [recipient, amount, keyId],
     });
     ```
 
-    1. deposit amount + fee (remaining fee is refunded)
-
-
 4. Wait for deposit to be confirmed on L3.
 
-  TBA
+    ```js linenums="1"
+    const l3Receipt = await l3Client.waitForTransactionReceipt({
+      hash: deposit.possibleL3TxHashes.decrypted!
+    });
+    ```
 
 
 ## ERC20 Token Mapping
@@ -101,3 +109,14 @@ L2 ETH is bridged into L3 Wrapped ETH.
 
     By default, L2 ETH is deposited into L3 Wrapped ETH (ERC20 token), not into the L3 gas token.
     L3 gas is free, so users do not need to hold any gas token.
+
+The L2-L3 token mapping can be queried via the `HostERC20Gateway` contract on L2:
+
+```js linenums="1"
+const l3TokenAddress = await l2Client.readContract({
+  address: c.contracts().HostERC20Gateway,
+  abi: abis.HostERC20Gateway,
+  functionName: 'getL2ERC20Address',
+  args: [c.contracts().HostWeth],
+});
+```

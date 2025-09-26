@@ -11,18 +11,23 @@ In this document we will present this use case.
 
 ## Making Token Transfers
 
+!!! info "See the full example at [transfer.ts](https://github.com/scroll-tech/cloak-js/tree/main/examples/viem/transfer.ts) example in the `@scroll-tech/cloak-js` package."
+
 To make ERC20 transfers (for L3 WETH or any other deposited token), simply call the token contract `transfer` function, just like you would on other EVM chains.
 
 ```js linenums="1"
-const hash = await l3Wallet.writeContract({
-  abi,
-  address: deposit.l3Token,
-  functionName: 'transfer',
-  args: [address, parseEther('0.01')],
+import { abis, cloak } from '@scroll-tech/cloak-js';
 
-  // gas is free
-  maxFeePerGas: 0,
-  maxPriorityFeePerGas: 0,
+const c = cloak('local-devnet');
+
+// configure client with access token...
+
+const hash = await l3Wallet.writeContract({
+  chain: null,
+  address: c.contracts().ValidiumWeth,
+  abi: abis.ERC20,
+  functionName: 'transfer',
+  args: [recipient.address, amount],
 });
 
 const receipt = await l3Client.waitForTransactionReceipt({ hash });

@@ -21,47 +21,77 @@ Cloak offers two ways to withdraw funds:
 
 We recommend using **fast withdrawals** for frequent, low-value withdrawals, and **slow withdrawals** for large-value transactions.
 
-## Initiating Withdrawals
+
+## Slow Withdrawals: Withdrawing via the Canonical Bridge
+
+!!! info "See the full example at [withdraw.ts](https://github.com/scroll-tech/cloak-js/tree/main/examples/viem/withdraw.ts) example in the `@scroll-tech/cloak-js` package."
 
 In all cases, withdrawals are initiated via the `ValidiumERC20Gateway.withdrawERC20AndCall` method.
 
-```js linenums="1"
-const hash = await l3Wallet.writeContract({
-    abi,
-    address: contracts.l3.ERC20Gateway,
-    functionName: 'withdrawERC20AndCall',
-    args: [l3Token, l2Address, amount, payload, 0],
+```js linenums="1" hl_lines="5-5"
+const withdrawalHash = await l3Wallet.writeContract({
+  chain: null,
+  address: c.contracts().ValidiumERC20Gateway,
+  abi: abis.ValidiumERC20Gateway,
+  functionName: 'withdrawERC20AndCall',
+  args: [l3Token, l2Account.address, amount, '0x', 0n],
+});
 
-    // gas is free
-    maxFeePerGas: 0,
-    maxPriorityFeePerGas: 0,
-  });
-
-  const receipt = await l3Client.waitForTransactionReceipt({ hash });
+const withdrawalReceipt = await l3Client.waitForTransactionReceipt({
+  hash: withdrawalHash
+});
 ```
 
-This will enqueue a withdraw message on `ValidiumMessageQueue`.
+This will create a withdraw request on L3, enqueuing it on the `ValidiumMessageQueue` contract.
+
+Once the transaction has been proven and finalized, the withdraw proof can be queried using a special RPC endpoint:
+
+```js linenums="1" hl_lines="3-3"
+const [w] = await l3Client.request({
+  // This RPC returns Merkle proofs for finalized withdrawals.
+  method: 'scroll_withdrawalsByTransaction',
+  params: [withdrawalHash],
+})
+```
+
+Finally, the user can claim on L2 using this withdraw proof:
+
+```js linenums="1" hl_lines="5-5"
+const claimHash = await l2Wallet.writeContract({
+  chain: null,
+  address: c.contracts().HostMessenger,
+  abi: abis.HostMessenger,
+  functionName: 'relayMessageWithProof',
+  args: [
+    w.from,
+    w.to,
+    BigInt(w.value),
+    BigInt(w.nonce),
+    w.message,
+    { batchIndex: BigInt(w.batch_index), merkleProof: w.proof }
+  ],
+});
+```
 
 
-## Withdrawing via the Fast Withdraw Vault
+## Fast Withdrawals: Withdrawing via the Fast Withdraw Vault
 
 To use the fast withdraw vault, simply send a withdrawal with these parameters:
 - `l2Address` should be the `HostFastWithdrawVault` contract.
 - `payload` should be the target address on L2.
 
-```js linenums="1" hl_lines="5-5"
-const hash = await l3Wallet.writeContract({
-    abi,
-    address: contracts.l3.ERC20Gateway,
-    functionName: 'withdrawERC20AndCall',
-    args: [l3Token, fastWithdrawVault/* (1)! */, amount, l2Address/* (2)! */, 0],
+```js linenums="1" hl_lines="6-6"
+const withdrawalHash = await l3Wallet.writeContract({
+  chain: null,
+  address: c.contracts().ValidiumERC20Gateway,
+  abi: abis.ValidiumERC20Gateway,
+  functionName: 'withdrawERC20AndCall',
+  args: [l3Token, fastWithdrawVault/* (1)! */, amount, l2Address/* (2)! */, 0n],
+});
 
-    // gas is free
-    maxFeePerGas: 0,
-    maxPriorityFeePerGas: 0,
-  });
-
-  const receipt = await l3Client.waitForTransactionReceipt({ hash });
+const withdrawalReceipt = await l3Client.waitForTransactionReceipt({
+  hash: withdrawalHash
+});
 ```
 
 1. Withdraw target address is `HostFastWithdrawVault`, which checks the sequencer permit and releases the funds.
@@ -71,12 +101,3 @@ Next, the sequencer will index this withdraw transaction and run some checks.
 If all checks pass, the sequencer will sign a permit authorizing the withdrawal, and it submits it on L2, releasing the tokens to the specified `l2Address`.
 
 **TBA: Finding the withdraw transaction on L2**
-
-
-## Withdrawing via the Canonical Bridge
-
-**TBA**
-
-1. Withdraw on L3.
-2. Wait for finalization.
-3. Claim via Merkle proof.
