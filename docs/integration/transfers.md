@@ -15,23 +15,42 @@ In this document we will present this use case.
 
 To make ERC20 transfers (for L3 WETH or any other deposited token), simply call the token contract `transfer` function, just like you would on other EVM chains.
 
-```js linenums="1"
-import { abis, cloak } from '@scroll-tech/cloak-js';
+=== "viem"
 
-const c = cloak('local-devnet');
+    ```js linenums="1"
+    import { abis, cloak } from '@scroll-tech/cloak-js';
 
-// configure client with access token...
+    const c = cloak('local-devnet');
 
-const hash = await l3Wallet.writeContract({
-  chain: null,
-  address: c.contracts().ValidiumWeth,
-  abi: abis.ERC20,
-  functionName: 'transfer',
-  args: [recipient.address, amount],
-});
+    // configure client with access token...
 
-const receipt = await l3Client.waitForTransactionReceipt({ hash });
-```
+    const hash = await l3Wallet.writeContract({
+      address: c.contracts().ValidiumWeth,
+      abi: abis.ERC20,
+      functionName: 'transfer',
+      args: [recipient.address, amount],
+    });
+
+    const receipt = await l3Client.waitForTransactionReceipt({ hash });
+    ```
+
+=== "ethers"
+
+    ```js linenums="1"
+    import { abis, cloak } from '@scroll-tech/cloak-js';
+
+    const c = cloak('local-devnet');
+
+    // configure client with access token...
+
+    const validiumWeth = new Contract(
+      c.contracts().ValidiumWeth,
+      abis.ERC20,
+      l3Wallet,
+    );
+
+    const tx = await validiumWeth.transfer(recipient.address, amount);
+    ```
 
 By default, this transaction and transaction receipt can only be queried by the sender and the recipient, as well as the chain admins.
 Other users cannot access this information.

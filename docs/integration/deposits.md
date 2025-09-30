@@ -40,7 +40,8 @@ We also want to avoid easily linking L2 and L3 accounts.
 ## Prerequisites
 
 We recommend using the [`@scroll-tech/cloak-js`](https://github.com/scroll-tech/cloak-js/tree/main) package.
-This package currently supports `viem`, with plans to supports `ethers-js`.
+This package provides the Cloak network configurations, and tools for encrypting and tracking deposits.
+It supports `viem` and `ethers-js`.
 
 To use this package in your JavaScript or TypeScript project, simply install and then import it:
 
@@ -58,17 +59,31 @@ console.log(c.contracts());
 
 The deposit process is as follows.
 
-1. Fetch current encryption key.
+1. Fetch the current encryption key.
 
-    ```js linenums="1"
-    const [keyId, encryptionKey] = await l2Client.readContract({
-      address: c.contracts().HostValidium,
-      abi: abis.HostValidium,
-      functionName: 'getLatestEncryptionKey',
-    });
-    ```
+    === "viem"
 
-2. Encrypt target address using the encryption key.
+        ```js linenums="1"
+        const [keyId, encryptionKey] = await l2Client.readContract({
+          address: c.contracts().HostValidium,
+          abi: abis.HostValidium,
+          functionName: 'getLatestEncryptionKey',
+        });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const validium = new Contract(
+          c.contracts().HostValidium,
+          abis.HostValidium,
+          l2Provider,
+        );
+
+        const [keyId, encryptionKey] = await validium.getLatestEncryptionKey();
+        ```
+
+2. Encrypt the target address using the encryption key.
 
     ```js linenums="1"
     const recipient = c.encryptAddress(l3Address/* (1)! */, encryptionKey);
@@ -77,29 +92,172 @@ The deposit process is as follows.
     1. It is recommended to generate a unique L3 address for the user.
        One that is not used on another networks.
 
-3. Send deposit to L2 bridge.
+3. Send the deposit to the L2 bridge.
+
+    === "viem"
+
+        ```js linenums="1"
+        await l2Wallet.writeContract({
+          address: c.contracts().HostWethGateway,
+          value: amount,
+          abi: abis.HostWethGateway,
+          functionName: 'deposit',
+          args: [recipient, amount, keyId],
+        });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const hostWethGateway = new Contract(
+          c.contracts().HostWethGateway,
+          abis.HostWethGateway,
+          l2Wallet,
+        );
+
+        const tx = await hostWethGateway.deposit(recipient, amount, keyId, {
+          value: amount,
+        });
+        ```
+
+4. Set up deposit tracking.
 
     ```js linenums="1"
-    await l2Wallet.writeContract({
-      chain: null,
-      address: c.contracts().HostWethGateway,
-      value: amount,
-      abi: abis.HostWethGateway,
-      functionName: 'deposit',
-      args: [recipient, amount, keyId],
-    });
+    const deposit = c.trackDeposit(l2Receipt, l3Account.address);
     ```
 
-4. Wait for deposit to be confirmed on L3.
+5. Wait for the deposit to be confirmed on L3.
+
+    === "viem"
+
+        ```js linenums="1"
+        const hash = deposit.possibleL3TxHashes.decrypted;
+        const l3Receipt = await l3Client.waitForTransactionReceipt({ hash });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const hash = deposit.possibleL3TxHashes.decrypted;
+        const l3Receipt = await l3Provider.waitForTransaction(hash);
+        ```
+
+
+## Depositing ERC20 Tokens to Cloak
+
+!!! info "See the full example at [deposit-erc20.ts](https://github.com/scroll-tech/cloak-js/tree/main/examples/viem/deposit-erc20.ts) example in the `@scroll-tech/cloak-js` package."
+
+ERC20 deposits are similar to ETH deposits, but they happen through the `ERC20Gateway` and require a token approval transaction on L2.
+
+1. Fetch the current encryption key.
+
+    === "viem"
+
+        ```js linenums="1"
+        const [keyId, encryptionKey] = await l2Client.readContract({
+          address: c.contracts().HostValidium,
+          abi: abis.HostValidium,
+          functionName: 'getLatestEncryptionKey',
+        });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const validium = new Contract(
+          c.contracts().HostValidium,
+          abis.HostValidium,
+          l2Provider,
+        );
+
+        const [keyId, encryptionKey] = await validium.getLatestEncryptionKey();
+        ```
+
+2. Encrypt the target address using the encryption key.
 
     ```js linenums="1"
-    const l3Receipt = await l3Client.waitForTransactionReceipt({
-      hash: deposit.possibleL3TxHashes.decrypted!
-    });
+    const recipient = c.encryptAddress(l3Address, encryptionKey);
     ```
 
+3. Approve the Cloak bridge to spend your ERC20 token.
 
-## ERC20 Token Mapping
+    === "viem"
+
+        ```js linenums="1"
+        await l2Wallet.writeContract({
+          address: l2Token,
+          abi: abis.ERC20,
+          functionName: 'approve',
+          args: [c.contracts().HostERC20Gateway, amount],
+        });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const erc20 = new Contract(l2Token, abis.ERC20, l2Wallet);
+
+        const approveTx = await erc20.approve(
+          c.contracts().HostERC20Gateway,
+          amount,
+        );
+        ```
+
+4. Send the deposit to the L2 bridge.
+
+    === "viem"
+
+        ```js linenums="1"
+        await l2Wallet.writeContract({
+          address: c.contracts().HostERC20Gateway,
+          abi: abis.HostERC20Gateway,
+          functionName: 'depositERC20',
+          args: [l2Token, recipient, amount, gasLimit, keyId],
+        });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const hostERC20Gateway = new Contract(
+          c.contracts().HostERC20Gateway,
+          abis.HostERC20Gateway,
+          l2Wallet,
+        );
+
+        await hostERC20Gateway.depositERC20(
+          l2Token,
+          recipient,
+          amount,
+          gasLimit,
+          keyId,
+        );
+        ```
+
+5. Set up deposit tracking.
+
+    ```js linenums="1"
+    const deposit = c.trackDeposit(l2Receipt, l3Account.address);
+    ```
+
+6. Wait for the deposit to be confirmed on L3.
+
+    === "viem"
+
+        ```js linenums="1"
+        const hash = deposit.possibleL3TxHashes.decrypted;
+        const l3Receipt = await l3Client.waitForTransactionReceipt({ hash });
+        ```
+
+    === "ethers"
+
+        ```js linenums="1"
+        const hash = deposit.possibleL3TxHashes.decrypted;
+        const l3Receipt = await l3Provider.waitForTransaction(hash);
+        ```
+
+
+### ERC20 Token Mapping
 
 The Scroll-Cloak bridge can permissionlessly bridge any valid ERC20 token.
 The bridge will deterministically compute the corresponding L3 token address, which will not change after the first deposit.
@@ -112,11 +270,25 @@ L2 ETH is bridged into L3 Wrapped ETH.
 
 The L2-L3 token mapping can be queried via the `HostERC20Gateway` contract on L2:
 
-```js linenums="1"
-const l3TokenAddress = await l2Client.readContract({
-  address: c.contracts().HostERC20Gateway,
-  abi: abis.HostERC20Gateway,
-  functionName: 'getL2ERC20Address',
-  args: [c.contracts().HostWeth],
-});
-```
+=== "viem"
+
+    ```js linenums="1"
+    const l3TokenAddress = await l2Client.readContract({
+      address: c.contracts().HostERC20Gateway,
+      abi: abis.HostERC20Gateway,
+      functionName: 'getL2ERC20Address',
+      args: [c.contracts().HostWeth],
+    });
+    ```
+
+=== "ethers"
+
+    ```js linenums="1"
+    const hostERC20Gateway = new Contract(
+      c.contracts().HostERC20Gateway,
+      abis.HostERC20Gateway,
+      l2Wallet,
+    );
+
+    const l3Token = await hostERC20Gateway.getL2ERC20Address(l2Token);
+    ```

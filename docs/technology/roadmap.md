@@ -2,7 +2,7 @@
 
 !!! warning
 
-    As of September 2025, Cloak is still experimental, unaudited software.
+    As of October 2025, Cloak is still experimental, unaudited software.
 
 
 ## Basic Features
@@ -11,7 +11,7 @@
 - [x] Validium contracts.
 - [x] Validium provers.
 - [x] Stealth deposits.
-- [ ] Sequencer key rotations.
+- [X] Sequencer key rotations.
 - [x] Fast withdrawal service.
 - [x] Authenticated RPC gateway.
 - [ ] Contract admin management.

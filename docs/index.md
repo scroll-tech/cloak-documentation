@@ -6,14 +6,14 @@ We will also show how you can integrate Cloak into your system.
 
 !!! warning
 
-    As of September 2025, Cloak is still experimental, unaudited software.
+    As of October 2025, Cloak is still experimental, unaudited software.
 
 
 ## What is Cloak?
 
 Rollups and stablecoins are effective tools of financial inclusion:
 They offer cheap, secure, programmable access to cross-border transfers, higher yield, and many more services that individuals and companies around the world need.
-Projects like Xen, USX, [Ether.fi](https://www.ether.fi), and [Shiga](https://shiga.io) all build towards these goals.
+Projects like Xen, [USX](https://www.usx.capital), [Ether.fi](https://www.ether.fi), and [Shiga](https://shiga.io) all build towards these goals.
 
 However, in the current web3 landscape, **lack of confidentiality is a major pain point for users**.
 Token balances and transactions are all public by default.

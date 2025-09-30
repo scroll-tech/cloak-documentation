@@ -6,6 +6,7 @@ theme:
   features:
     - content.code.annotate
     - content.code.copy
+    - content.tabs.link
     - navigation.sections
     - search.highlight
   palette:
@@ -38,6 +39,11 @@ markdown_extensions:
 
 extra_css:
   - stylesheets/code-wrap.css
+
+extra:
+  generator: false
+
+copyright: Copyright &copy; 2025 Scroll
 
 nav:
   - Home: index.md
